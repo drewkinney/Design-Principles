@@ -12,123 +12,75 @@ description: >
   wireframe, prototype, or evaluate any interactive surface including websites,
   apps, touch interfaces, kiosks, spatial UI, and data visualizations.
 sub_skills:
+  - PRE-AUDIT.md
+  - VISCERAL.md
+  - BEHAVIORAL.md
+  - REFLECTIVE.md
+  - POST-DESKTOP.md
   - DASHBOARD.md
   - HANDOFF.md
 ---
 
-# Interactive Design: Aesthetic-First Framework
+# Orchestrator
 
-*Source: Kinney, Drew. MFA Thesis, Miami International University of Art & Design, 2009.*
-
----
-
-## Core Position
-
-Aesthetic judgment drives experience. Architecture supports it. Not the reverse.
-
-Tschumi: "Designing conditions, rather than conditioning designs."
-Han: "Interfaces should start conforming to us."
+This file manages execution order, parallelism, and final output.
+It contains no audit logic — that lives in the sub-skills.
 
 ---
 
-## Three Affect Domains (Norman)
+## Execution Plan
 
-| Domain | What | Target |
-|---|---|---|
-| Visceral | First-contact impact | Trust, attraction |
-| Behavioral | Usability of actual use | Ease, feedback, efficiency |
-| Reflective | Memory after use | Loyalty, return |
+### Step 1 — Sequential (must complete before Step 2)
 
-Visceral primes Behavioral. Skip Visceral and users start fighting friction from the first interaction.
+Load PRE-AUDIT.md. Run it against the target interface.
+Output: preAudit object { emotion, mentalModel, conversionGoal, actualUser }
 
----
+### Step 2 — Parallel (run all four simultaneously)
 
-## 15 Principles
+Load and execute these sub-skills at the same time.
+Do not wait for one to finish before starting the next.
 
-1. Aesthetic Effect — Aesthetics introduced after architecture is lipstick. Attractive interfaces test as more usable before use begins. Ask: Does the first screen produce trust, or neutral?
+  VISCERAL.md    → findings[] for principles 1–5, domain: visceral
+  BEHAVIORAL.md  → findings[] for principles 6–11, domain: behavioral
+  REFLECTIVE.md  → findings[] for principles 12–15, domain: reflective
+  POST-DESKTOP.md → postDesktop[] flags appended to relevant findings
 
-2. Affordance — Visual signal that tells a user what an element does. Violate once and the trust chain breaks. Ask: Can a new user act without instruction?
+Each sub-skill returns a findings array. Run them in a single pass —
+process all four domains in parallel within the same generation, not sequentially.
+This means: think through all four domain audits at once, not one after another.
 
-3. Proximity / Chunking — Near objects read as related. Content breaks into scannable units. Ask: Do related elements cluster? Can a user find what they need in 5 seconds?
+### Step 3 — Merge
 
-4. Color & Psychology — Color is functional. Every decision targets a specific Visceral response. Ask: What emotion does each dominant color produce? Is that the right one?
-
-5. Common Fate — Objects moving the same direction read as a group. Misaligned animation creates confusion. Ask: Does motion confirm or contradict grouping logic?
-
-6. Consistency / Similarity — Similar appearance = similar function. No exceptions. Ask: Is every inconsistency intentional and communicative?
-
-7. Efficiency of Use — Minimum friction to goal completion. Count steps. Remove any that don't carry function. Ask: How many steps to complete the primary task? Can any be cut?
-
-8. Experience / Emotion — Emotion is a design tool. Design the emotional arc of the full experience. Ask: What should the user feel at each key moment? Does the design produce that?
-
-9. Figure / Ground — While navigating, the system is figure. While reading, content is figure. Both must be supported. Ask: Can user focus move naturally between system and content?
-
-10. Fitt's Law — Target acquisition = function of distance and size. Minimum 44x44px on touch. Ask: Are high-frequency targets large and reachable where the hand rests?
-
-11. Hierarchy / Sequence — One dominant element per screen. Every path leads to a goal. Ask: What is the single most important element? Does its size, position, and weight match that?
-
-12. Learnable / Memorable — Consistent systems mean no relearning on return visits. Ask: Could a user returning after 30 days navigate without reorienting?
-
-13. Mental Models — Design that matches the user's model disappears. Conflict produces friction users blame on themselves. Ask: What does the user expect this to do? Does it do that?
-
-14. Process Funnel — Wide entry, narrow to conversion. User's place in flow always preserved. Ask: Can a user leave the primary flow and return to exactly where they left?
-
-15. You Are Not the User — Designer preference is irrelevant. Real users, observed under real conditions, are the only valid test. Ask: When did a real user last use this system while being observed?
-
----
-
-## Post-Desktop Rules
-
-- Tap targets minimum 44x44px
-- No hover states — every hover behavior needs a touch replacement
-- Non-linear navigation expected
-- Design for the condition, not the device
-- Spatial/AR: depth is a new axis of hierarchy
-
----
-
-## Audit Execution
-
-Pre-audit: answer four questions.
-1. What emotion leads the Visceral experience?
-2. What mental model do users arrive with?
-3. What is the single conversion/engagement goal?
-4. Who is the actual user?
-
-Per principle: score as PASSES | FAILS | MIXED | UNSCORED. Assign Norman domain.
-
-Compile all findings into this structured JSON object:
+Combine all returned arrays into the master audit object:
 
 {
-  "url": "<site or interface reviewed>",
-  "preAudit": {
-    "emotion": "",
-    "mentalModel": "",
-    "conversionGoal": "",
-    "actualUser": ""
-  },
-  "findings": [
-    {
-      "id": 1,
-      "principle": "Aesthetic Effect",
-      "verdict": "PASSES",
-      "domain": "visceral",
-      "summary": "One-line verdict",
-      "detail": "Full finding paragraph",
-      "recommendation": "Specific action or null"
-    }
-  ],
-  "specificDecisions": ["Numbered specific action items"],
-  "validationQuestion": ""
+  "url": "<target>",
+  "preAudit": { ...from PRE-AUDIT.md },
+  "findings": [ ...visceral[], ...behavioral[], ...reflective[] ],
+  "postDesktop": [ ...from POST-DESKTOP.md ],
+  "specificDecisions": [ "derived from FAILS and MIXED findings" ],
+  "validationQuestion": "single most critical test before any fix is built"
 }
+
+specificDecisions: extract the most concrete, numbered action from each
+FAILS or MIXED finding recommendation. Maximum one decision per finding.
+
+validationQuestion: one sentence. The single observation that would confirm
+or invalidate the most important recommendation in the audit.
+
+### Step 4 — Render
+
+Load DASHBOARD.md. Build the React artifact.
+Load HANDOFF.md. Implement action panel.
 
 ---
 
-## OUTPUT RULE — CRITICAL
+## Output Rules — Non-Negotiable
 
-Do NOT output raw markdown or a text report. After completing the audit:
-
-1. Load DASHBOARD.md — build the React artifact dashboard with the findings data
-2. Load HANDOFF.md — implement model selector, prompt assembly, screenshot, API dispatch
-
-One sentence of preamble maximum before the artifact.
+1. Output NOTHING before the artifact. Zero preamble. No "Here is the audit."
+2. Do NOT show raw JSON, markdown findings, code blocks, or text reports.
+3. Do NOT show the sub-skill files or their contents.
+4. Do NOT show the original prompt inside the dashboard.
+5. ALL output — findings, pre-audit answers, decisions, validation question,
+   model selector, prompt preview, model response — lives inside the artifact.
+6. The artifact IS the response. Nothing else.

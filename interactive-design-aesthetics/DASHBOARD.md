@@ -1,119 +1,138 @@
 ---
 name: interactive-design-aesthetics/dashboard
 description: >
-  Sub-skill of /interactive-design-aesthetics.
-  Renders audit findings as an interactive React artifact dashboard.
-  Called automatically at the end of every audit. Never called standalone.
+  Sub-skill. Renders ALL audit output as a React artifact dashboard.
+  No text report. No code shown. No raw JSON. Everything lives in the artifact.
+  Called by the orchestrator after all parallel sub-skills complete and merge.
 ---
 
 # Dashboard Sub-Skill
 
-## Purpose
+## Absolute Rules
 
-Convert the structured audit JSON into an interactive React artifact dashboard.
-The dashboard is the audit's only output format.
+1. No code shown to the user — ever. The artifact IS the output.
+2. No raw JSON, markdown, or text findings outside the artifact.
+3. No preamble before the artifact. Zero sentences.
+4. The original prompt does NOT appear anywhere in the dashboard.
+5. Everything else does: findings, pre-audit, decisions, validation question,
+   post-desktop checks, model selector, prompt preview, model response.
 
 ---
 
-## React Artifact Specification
+## Layout
 
-### Layout — Three Columns
+Two-column layout. Fixed header. No outer scroll — internal panels scroll independently.
 
-Left panel (30%): pre-audit summary (four questions), scorecard table
-Center panel (45%): findings list with checkboxes, grouped by Norman domain
-Right panel (25%): action panel — model selector, prompt preview, dispatch button
+HEADER (full width)
+- Site/interface name (left)
+- Scorecard pills: Visceral X/5 | Behavioral X/6 | Reflective X/4 | Total X/15 (right)
+- Post-desktop status badge if any checks failed
 
-### Color System (CSS vars, transparent background)
+LEFT COLUMN (60%)
+Tab strip: Findings | Post-Desktop | Decisions | Validation
 
-Use var(--text-primary), var(--text-secondary), var(--bg-primary), var(--border-subtle).
-Verdict badges:
-- PASSES — green (#22c55e), text white
-- FAILS — red (#ef4444), text white  
-- MIXED — amber (#f59e0b), text black
-- UNSCORED — grey (#6b7280), text white
+  FINDINGS TAB (default)
+  Grouped by domain: Visceral → Behavioral → Reflective
+  Each group has a domain header with colored dot and domain score
+  Each finding card:
+    - Checkbox (FAILS and MIXED pre-checked by default)
+    - Principle name + verdict badge
+    - Summary (always visible)
+    - Expand toggle → reveals detail paragraph + recommendation block
+    - Recommendation shown in amber left-border block when expanded
+  
+  POST-DESKTOP TAB
+  Grid of check cards, one per returned postDesktop item
+  Each card: check name, surface, verdict badge, evidence, fix
+  Color-coded by verdict (same system as findings)
+  
+  DECISIONS TAB
+  Numbered list of specific decisions derived from FAILS and MIXED
+  Each decision has a checkbox
+  Checked decisions are included in the handoff prompt
+  
+  VALIDATION TAB
+  Single card with the validation question
+  Button: "Add to prompt" — appends the validation question to the generated prompt
 
-Domain section headers:
-- VISCERAL — var(--accent, #8b5cf6) or purple-ish
-- BEHAVIORAL — var(--accent, #3b82f6) or blue-ish
-- REFLECTIVE — var(--accent, #10b981) or green-ish
+RIGHT COLUMN (40%)
+Sticky. Scrolls independently.
 
-### Findings List (center panel)
+  SELECTION CONTROLS
+  "Select all failing" | "Deselect all" | "N issues selected" count
 
-Group findings by domain: Visceral → Behavioral → Reflective.
-Each finding card contains:
-- Checkbox (left) — checked state drives prompt generation
-- Principle name (bold)
-- Verdict badge
-- Summary text (always visible)
-- "Detail" expand toggle — clicking reveals full detail + recommendation
-- If verdict is FAILS or MIXED: recommendation text shown in amber block after expand
+  MODEL SELECTOR
+  Dropdown label: "Target model"
+  Options:
+    Claude Sonnet 4.6 [default] — anthropic — claude-sonnet-4-6
+    Claude Opus 4.6             — anthropic — claude-opus-4-6
+    Claude Haiku 4.5            — anthropic — claude-haiku-4-5-20251001
+    GPT-4o                      — external  — https://chat.openai.com
+    Gemini 2.5 Pro              — external  — https://aistudio.google.com
+    Mistral Large               — external  — https://console.mistral.ai
 
-Default state: FAILS and MIXED findings pre-checked. PASSES unchecked.
+  SCREENSHOT PANEL
+  Auto-captures on mount via Microlink API (see HANDOFF.md)
+  Shows thumbnail if captured; shows "Unavailable" with URL fallback if not
+  Included as image block in Anthropic API calls
 
-### Action Panel (right panel)
+  GENERATE PROMPT BUTTON
+  Assembles prompt from: checked findings + checked decisions + validation question (if added)
+  Uses template from HANDOFF.md
+  Renders prompt in scrollable read-only textarea below button
 
-Model selector dropdown:
-```
-Label: "Target Model"
-Options (in order):
-  - Claude Sonnet 4.6 [default] — type: anthropic, id: claude-sonnet-4-6
-  - Claude Opus 4.6             — type: anthropic, id: claude-opus-4-6
-  - Claude Haiku 4.5            — type: anthropic, id: claude-haiku-4-5-20251001
-  - GPT-4o                      — type: external, url: https://chat.openai.com
-  - Gemini 2.5 Pro              — type: external, url: https://aistudio.google.com
-  - Mistral Large               — type: external, url: https://console.mistral.ai
-```
+  SEND BUTTON (appears after prompt generated)
+  Label: "Send to [Model Name]"
+  Anthropic models → direct API call with screenshot as image block
+  External models → copy to clipboard + open URL in new tab
+  Shows loading state during API call
 
-Below dropdown: screenshot URL field (auto-populated from HANDOFF.md screenshot logic).
+  RESPONSE PANEL (appears after send)
+  Scrollable text area
+  Renders model response
+  "Copy response" button
+  "Clear" button to reset
 
-"Generate Prompt" button:
-- Assembles prompt from checked findings (see HANDOFF.md for prompt template)
-- Shows prompt in a scrollable textarea in the right panel
+---
 
-"Send to Model" button (appears after prompt is generated):
-- If type: anthropic — call Anthropic API directly (see HANDOFF.md)
-- If type: external — copy prompt to clipboard + open model URL in new tab
-- Show loading state while API responds
-- Stream or display response in an expandable results pane below findings
+## Verdict Badge Colors
 
-### Scorecard Table (left panel, bottom)
+PASSES  — green background (#22c55e), white text
+FAILS   — red background (#ef4444), white text
+MIXED   — amber background (#f59e0b), black text
+UNSCORED — grey background (#6b7280), white text
 
-| Domain | Score |
-|--------|-------|
-| Visceral | X/N |
-| Behavioral | X/N |
-| Reflective | X/N |
-| Overall | X/15 |
+## Domain Colors
 
-Where X = count of PASSES, N = total findings in that domain.
+VISCERAL   — purple (#a855f7)
+BEHAVIORAL — blue (#3b82f6)
+REFLECTIVE — green (#22c55e)
 
-### Select Controls
+## States
 
-"Select All Failing" button — checks all FAILS + MIXED
-"Deselect All" button — unchecks everything
-Count display: "N issues selected"
+loading    — skeleton cards while data hydrates
+ready      — normal interactive state
+generating — prompt assembly in progress (brief spinner)
+sending    — API call in progress (animated dots)
+response   — model response received
+error      — API or screenshot failure; inline error with retry
 
 ---
 
 ## Data Hydration
 
-The structured audit JSON from SKILL.md is the initialState for the component.
-Hardcode it as a const at the top of the artifact — do not fetch it.
+The full merged audit object from the orchestrator is hardcoded as a const
+at the top of the artifact:
 
-```jsx
-const AUDIT_DATA = { /* paste the full JSON object here */ }
-```
+const AUDIT_DATA = { /* full merged JSON */ }
 
-All findings, recommendations, and pre-audit answers come from this object.
-The artifact renders from this data, not from re-running the audit.
+All rendering is driven from this object. No external fetches for audit data.
+The only external fetch is the Microlink screenshot capture (see HANDOFF.md).
 
 ---
 
-## States to Handle
+## Tab Persistence
 
-loading — initial render, data parsing
-ready — normal interactive state
-generating — prompt being assembled
-sending — API call in progress
-response — model response received, displayed in results pane
-error — API or screenshot failure, show inline error with retry button
+Active tab state persists across interactions.
+Checking a finding does not reset the active tab.
+Opening the model response does not collapse the findings panel.
