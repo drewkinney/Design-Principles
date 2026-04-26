@@ -1,0 +1,75 @@
+Prompt: 
+/interactive-design-aesthetics
+
+Evaluate Adobe.com
+
+
+======================================================
+RESULT
+
+Adobe.com — Interactive Design Audit
+Framework: Kinney Aesthetic-First / Norman Affect Domains
+
+The Core Problem First
+Adobe.com is four different websites wearing one URL. Creative Cloud consumers. Enterprise Experience Cloud buyers. Students. SMBs using Express. Each group needs a fundamentally different hierarchy, different emotional arc, different CTA sequence. The homepage tries to serve all of them simultaneously and ends up being a diplomatic document — fair to everyone, optimized for no one.
+That's not a visual design problem. It's a structural one that cascades into every principle below.
+
+Visceral Diagnosis
+What's working: The red is owned. Nobody else owns that red. The typography is tight, confident, and uses scale well. Hero imagery when they show actual work — real photographs edited in Photoshop, real video in Premiere — lands hard. You believe the product. The dark/light contrast system has authority.
+What's broken: The hero rotates. Rotating heroes are where design conviction goes to die. A carousel at the top of the funnel signals that the organization couldn't make a decision. Every rotation dilutes the visceral hit of the previous one. The first-frame trust established by a strong hero is reset by the carousel mechanism — users who land mid-rotation get a weaker entry point than users who land at frame one. That's random conversion rates baked into the architecture.
+Verdict: Visceral is passing but unstable. Strong raw materials, weak commitment.
+
+Principle-by-Principle
+1. Aesthetic Effect
+The design system is post-decisions, not pre-decisions. Someone built a solid design system and handed it to AEM content teams who populated it without aesthetic judgment. The component library is consistent. The curation of what goes into the components is not. The result is an aesthetically competent site that rarely surprises.
+2. Affordance
+Navigation affordance is overloaded. The mega-nav on "Products" drops a grid of 30+ product tiles. The affordance is technically correct — things look clickable, hover states work — but the cognitive affordance has collapsed. Users know what to do with the nav; they don't know which thing to pick. That's not an affordance problem in the strict sense, but it produces identical behavior: hesitation.
+The "Free Trial" / "Buy Now" dual CTA pattern is handled well. The hierarchy is clear. The secondary CTA reads as secondary. That's one of the few micro-decisions on the page that's unambiguously right.
+3. Proximity / Chunking
+Product chunking by cloud (Creative, Document, Experience) is coherent for Adobe's org structure. It's less coherent for a user who wants to make a YouTube thumbnail and doesn't know whether that's Photoshop, Express, or Premiere. The chunking serves Adobe's taxonomy, not the user's task. Task-based chunking ("What do you want to make?") would test better for new users, even if the power-user base prefers product names.
+4. Color & Psychology
+Red CTA on white/dark backgrounds: correct. High-arousal color, signals urgency, draws the eye. The problem is that red also appears in product logos (Illustrator, InDesign, Acrobat, Premiere). The CTAs and the product identity compete for the same emotional signal. When everything is red, nothing is a CTA.
+5. Common Fate
+Animation is restrained and mostly correct. Scroll-triggered fades are overused but not disorienting. The carousel violates Common Fate — each frame introduces new motion directions with no continuity from the previous. The user's eye has no anchor during transitions.
+6. Consistency / Similarity
+The main domain is consistent. Cross-domain is where it fractures badly. helpx.adobe.com looks like a different company from a different era. business.adobe.com runs a parallel design system with different type scales, different spacing, different color weight. community.adobe.com is another system entirely. A user who purchases on adobe.com, needs help on helpx, and renews on account.adobe.com has had three different brand experiences without leaving Adobe. That's Reflective damage.
+7. Efficiency of Use
+Primary task for most new users: find the right product and start a trial. Step count: Land on homepage → scan hero (ambiguous) → open Products mega-nav → locate product category → locate specific product → read product page → locate pricing → understand plan tiers → start trial. That's 7-9 steps with multiple decision points that require product knowledge the user doesn't have yet. A wizard or task-based entry point would cut this in half.
+8. Experience / Emotion
+Adobe's brand promise is creative empowerment. The site mostly makes you feel like you're shopping for software. The emotional vocabulary — your work, your vision, what you'll make — surfaces in headlines but disappears in the product browsing experience, which is a feature comparison matrix with a gradient on it. The aspiration leaks out the moment you hit pricing.
+9. Figure / Ground
+Works when the page is read linearly. Breaks during the mega-nav state. When the mega-nav is open, the page behind it doesn't recede sufficiently — the overlay is dark but not dark enough, the content behind it stays visually active. The user is simultaneously tracking two planes of information.
+10. Fitt's Law
+Desktop: mostly correct. The primary CTA buttons are appropriately sized. Navigation targets are generous.
+Mobile: the nav collapses to a hamburger, which is standard, but the expanded mobile nav requires scrolling through a full product list before reaching anything useful. Primary actions are buried. The most common task on mobile — "what is this plan / how much does it cost" — requires more taps than it should.
+11. Hierarchy / Sequence
+There is no single dominant element on the homepage. The hero competes with the navigation bar, which competes with the secondary product grid below the fold, which competes with the feature callout modules. Multiple elements are sized identically and given identical visual weight. The eye has nowhere to land first with confidence.
+12. Learnable / Memorable
+The main domain is learnable — repeated visits quickly orient the user. Sub-domain fragmentation (see Consistency) destroys memorability at the system level. Users remember the homepage; they don't map the system because the system doesn't have a unified shape.
+13. Mental Models
+New users arrive with an app-store mental model: browse products, find the one I need, download it. Adobe's model is subscriptions, bundles, and plans — which creates immediate friction when the expected "buy Photoshop" action produces "choose between 8 plan tiers." The mental model mismatch is a known problem; Adobe has not resolved it structurally, only added copy to explain it.
+14. Process Funnel
+The free trial funnel is well-built once you're in it. The problem is entering it. The homepage doesn't function as a single funnel entrance — it's a lobby with 40 doors. Users who navigate to a specific product page and start a trial from there complete at higher rates than users who start from the homepage, because the product page has a narrower funnel. The homepage is functionally pre-funnel, which makes it an awareness surface pretending to be a conversion surface.
+15. You Are Not the User
+The mega-nav product grid is the tell. That grid reflects Adobe's organizational structure perfectly. No user has ever walked in needing "a solution from Digital Media" versus "a solution from Digital Experience." They need to edit a video, sign a document, or build a campaign. The product-org-shaped nav is designed for people who already know Adobe's product names — which means it's designed for existing customers, not for acquisition.
+
+Reflective Assessment
+Users who come back to adobe.com are mainly coming back to manage their account, not to re-experience the brand. The Reflective layer is weak because the Visceral and Behavioral layers haven't built enough equity to carry an emotional return. Adobe's product love is enormous — Photoshop has 35 years of cultural capital. The website doesn't leverage that mythology. It's a commerce interface that happens to represent one of the most emotionally resonant software brands on earth.
+
+Ranked Recommendations
+1. Collapse the homepage into a task-based entry point.
+Replace or parallel the product-org nav with: "What are you trying to make?" — with five or six task categories (Edit photos / Edit video / Create graphics / Sign & manage documents / Run a marketing team) that funnel directly to the right product with a single trial CTA. Test against current homepage. This is the highest-impact single change.
+2. Kill the carousel.
+Pick one message, make it true, make it visually dominant. If the organization can't agree on one message, the homepage can't save it — but at minimum, a static hero converts better than a rotating one across every A/B test that has ever run on this mechanic.
+3. Red CTA segregation.
+Product logos that use red need to be visually distinguished from action elements. Either shift product logos to use brand red in contained shapes, or shift CTAs to a red with a different value that reads as hot compared to the product-logo red. Right now they compete.
+4. Unify the sub-domains or build a visual bridge system.
+The helpx.adobe.com experience in particular is a brand liability. A user who buys on the strength of the main site and then hits helpx for onboarding has an immediate trust regression.
+5. Mobile: surface pricing and trial CTAs within two taps from landing.
+The current mobile path to trial initiation is too long. Compress it.
+
+Validation Question
+Before any redesign: observe 10 first-time users attempting to find the right Creative Cloud plan on a phone without assistance. Count hesitations. That number is the baseline everything else is measured against.
+
+Bottom line: Adobe.com is a well-resourced, competently executed site that is structurally misaligned with how its users actually think. The visual language has authority. The architecture has captured the org chart instead of the user's task. For a company that makes design tools and wrote half the industry's design vocabulary, the gap between what they sell and how they sell it is noticeable.
+
