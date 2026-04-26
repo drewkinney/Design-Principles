@@ -1,13 +1,16 @@
 ---
 name: interactive-design-aesthetics
 description: >
-  Apply Drew Kinney's aesthetic-first interactive design framework to any
-  interactive project — websites, apps, touch/spatial/ambient interfaces,
-  data visualizations, kiosks. Use when asked to design, critique, audit,
-  wireframe, prototype, or evaluate any UI or UX; when asked about navigation,
-  affordance, hierarchy, color, user trust, or interaction patterns; when
-  comparing print to digital; or when a user wants to move beyond window dressing
-  into experience design.
+  Audits any website, app, or interface against Drew Kinney's aesthetic-first
+  interactive design framework — 15 principles across Norman's three affect domains
+  (Visceral, Behavioral, Reflective). Triggers on: /interactive-design-aesthetics,
+  any request to audit, critique, evaluate, or redesign a UI or UX, references to
+  affordance, hierarchy, color psychology, navigation, interaction patterns, or user
+  trust. Renders findings as an interactive dashboard artifact — not a text report —
+  with checkboxes per finding, live screenshot capture, model selector, and one-click
+  prompt dispatch to Claude or external models. Use when asked to design, audit,
+  wireframe, prototype, or evaluate any interactive surface including websites,
+  apps, touch interfaces, kiosks, spatial UI, and data visualizations.
 sub_skills:
   - DASHBOARD.md
   - HANDOFF.md
