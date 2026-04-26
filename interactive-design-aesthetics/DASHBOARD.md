@@ -319,3 +319,36 @@ Skeleton uses the domain color (visceral=purple, behavioral=blue, reflective=gre
 Scores update in real time as each domain resolves.
 PASSES counts as 1. FAILS/MIXED/UNSCORED count as 0.
 Total = sum of all PASSES across all domains.
+
+---
+
+## Progress Tracking
+
+Every loading stage gets a simulated progress bar using `useSimProgress(status)` hook.
+
+### Hook logic
+- `status === 'loading'` → start setInterval at 350ms
+- Increments: fast early (3–10% per tick below 40%), slow mid (1.5–5.5% below 70%), crawl late (0.5–2% approaching 88%)
+- Hard cap at 88% — never reaches 100% while loading
+- `status === 'done'` → snap to 100% via transition
+- Cleanup: clearInterval on status change or unmount
+
+### Visual layers
+
+HEADER — overall progress bar (indigo gradient, 4px)
+  Fills based on completed stage count (stagesDone/5 × 100%)
+
+HEADER — stage breakdown row (5 bars, one per stage)
+  Pre-audit: indigo | Visceral: purple | Behavioral: blue | Reflective: green | Post-desktop: amber
+  Each shows its own simProgress percentage to the right of its label
+
+DOMAIN SECTIONS — per-domain bar (2px, matches domain color)
+  Sits between the domain header and the first finding card
+  Shows live percentage during loading, fills to 100% on completion
+
+SCREENSHOT PANEL — progress bar (2px, indigo) with percentage label
+  Fires on mount, resolves when Microlink returns
+
+### Transition
+All bars use: `transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1)`
+Smooth deceleration on each increment. Snaps instantly to 100% on done.
