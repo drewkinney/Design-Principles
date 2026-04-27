@@ -1,354 +1,281 @@
 ---
 name: interactive-design-aesthetics/dashboard
 description: >
-  Builds a self-running React artifact dashboard that conducts its own audit
-  via parallel Anthropic API calls. The artifact shell renders immediately.
-  Audit runs inside the artifact. Claude does not run the audit.
+  Technical specification for the self-running React artifact dashboard.
+  Three sequential Anthropic API calls: audit JSON, SVG mockup, HTML prototype.
+  Model selector covers 7 image generation targets. Markdown export included.
+  See design-audit.jsx for implementation.
 ---
 
-# Dashboard — Self-Running Audit Artifact
+# Dashboard — Audit Artifact Technical Specification
+
+## Overview
+
+The dashboard is a React artifact (`.jsx`) that runs a full 15-principle design audit automatically. Input: any URL, app name, or interface description. Output: scored audit report, Claude SVG mockup, copyable image prompts for 7 external models, live HTML prototype, downloadable Markdown report.
+
+Claude's role when invoking the dashboard: inject the target and render the artifact. The artifact runs everything else.
+
+---
 
 ## Architecture
 
-The artifact is an AI-powered app. It runs the full audit itself.
-Claude's only job: inject the TARGET url and render the artifact.
+### Three-Phase Pipeline
 
-Execution inside the artifact:
-  Mount → screenshot capture fires immediately (parallel, non-blocking)
-  Mount → PRE-AUDIT API call fires
-  PRE-AUDIT resolves → VISCERAL + BEHAVIORAL + REFLECTIVE + POST-DESKTOP fire in parallel
-  Each domain resolves → its findings populate immediately, no waiting for others
-  FAILS and MIXED auto-checked as each domain populates
-  Action panel is interactive from first render
+All API calls go through the Anthropic passthrough. No external keys required. Google, OpenAI, and all other image generation APIs are blocked by the artifact sandbox CSP and cannot be called directly.
 
-## Embedded Audit Prompts
-
-All audit logic lives as prompt constants in the artifact. Not in skill files.
-Each is a function that takes (url, preAudit) and returns a prompt string.
-
-### PRE_AUDIT_PROMPT(url)
 ```
-Analyze the interface at ${url}.
-Return ONLY a JSON object. No markdown. No prose. No explanation.
-{
-  "emotion": "single word or short phrase — the one emotion Visceral should produce",
-  "mentalModel": "one sentence — the mental model users arrive with",
-  "conversionGoal": "one action — the single primary conversion goal",
-  "actualUser": "one to two sentences — who is actually using this right now"
-}
+User input → [1. AUDIT] → [2. SVG MOCKUP] → [3. HTML PROTOTYPE] → Results
 ```
 
-### VISCERAL_PROMPT(url, preAudit)
-```
-Apply Drew Kinney's aesthetic-first UX framework (MFA Thesis, Miami IUA&D, 2009).
-Audit the interface at ${url} for these 5 Visceral principles.
-Pre-audit context: ${JSON.stringify(preAudit)}
+**Phase 1: Audit**
+- Endpoint: `api.anthropic.com/v1/messages`
+- Model: `claude-sonnet-4-20250514`
+- Max tokens: 1000
+- Output: compact JSON (domain scores, violations, strengths, validation question)
+- Approx output size: 400-600 tokens
 
-Return ONLY a JSON array of exactly 5 findings. No markdown. No prose.
+**Phase 2: SVG Mockup**
+- Same endpoint and model
+- Input: audit summary (target + violation fixes)
+- Output: raw SVG element, rect/text/line/circle only, max 48 elements
+- Renders inline via `dangerouslySetInnerHTML`
 
-PRINCIPLE 1 — Aesthetic Effect
-Does first contact produce trust? Is the aesthetic intentional or assembled?
-Does it match the lead emotion: ${preAudit.emotion}?
-PASSES: trust + emotion match. MIXED: trust present but cautious/mismatched. FAILS: neutral or wrong emotion.
+**Phase 3: HTML Prototype**
+- Same endpoint and model
+- Input: target name + top violation fix + color brief
+- Output: raw HTML, inline CSS only, no JS, 60-line hard limit
+- Renders in sandboxed `<iframe srcDoc>`
 
-PRINCIPLE 2 — Affordance
-Can a new user identify interactive elements without instruction?
-Any scroll-jacking, hover-only signals, or visually indistinct interactive elements?
-PASSES: all elements self-identify. MIXED: most correct, specific patterns fail. FAILS: trial and error required.
+### Token Constraint
 
-PRINCIPLE 3 — Proximity / Chunking
-Do related elements cluster? Scannable in under 5 seconds?
-CTAs separated from the content that motivates them?
-PASSES: groupings clear, scannable. MIXED: most correct, specific sections break. FAILS: must read everything.
+The artifact sandbox enforces a hard 1000-token cap per API response. All prompts are engineered to produce outputs within this ceiling. Exceeding it causes JSON truncation and parse failure.
 
-PRINCIPLE 4 — Color & Psychology
-Does color produce ${preAudit.emotion}? Is color functional (hierarchy, action, status)?
-Do premium and budget products share identical color systems inappropriately?
-PASSES: palette produces target emotion consistently. MIXED: direction correct, applications contradict. FAILS: wrong emotion.
+Audit JSON schema is strictly constrained:
+- `verdict` strings: 6 words max
+- `finding` strings: 12 words max
+- `fix` strings: 12 words max
+- Max 3 violations
+- Max 4 strengths
 
-PRINCIPLE 5 — Common Fate
-Do elements introduced together move together? Does animation confirm grouping?
-Inconsistent easing or direction across similar components?
-PASSES: coherent motion system. MIXED: mostly correct, specific sequences contradict. FAILS: inconsistent or confusing. UNSCORED: no animation.
+SVG generation:
+- Max 48 elements
+- Permitted: `rect`, `text`, `line`, `circle` only
+- Forbidden: `path`, `gradient`, `clipPath`, `defs`
 
-Each finding must be exactly this structure:
-{"id":N,"principle":"Name","verdict":"PASSES|FAILS|MIXED|UNSCORED","domain":"visceral","summary":"one direct sentence","detail":"2-4 sentences of specific observation about this interface","recommendation":"one specific implementable action or null"}
-```
-
-### BEHAVIORAL_PROMPT(url, preAudit)
-```
-Apply Drew Kinney's aesthetic-first UX framework (MFA Thesis, Miami IUA&D, 2009).
-Audit the interface at ${url} for these 6 Behavioral principles.
-Pre-audit context: ${JSON.stringify(preAudit)}
-
-Return ONLY a JSON array of exactly 6 findings. No markdown. No prose.
-
-PRINCIPLE 6 — Consistency / Similarity (id:6)
-Same component same appearance everywhere? Every inconsistency intentional?
-Type scale, CTA patterns, section transitions — locked or variable?
-PASSES: system-wide. MIXED: core correct, sections break. FAILS: frequent unintentional inconsistency.
-
-PRINCIPLE 7 — Efficiency of Use (id:7)
-Count steps from landing to ${preAudit.conversionGoal}. Any unnecessary?
-Decisions introduced at checkout that belong earlier? Defaults set to most common choice?
-PASSES: minimum steps. MIXED: mostly efficient, specific steps add friction. FAILS: materially longer than needed.
-
-PRINCIPLE 8 — Experience / Emotion (id:8)
-Emotional arc sustained from landing through conversion?
-Service/utility sections maintain emotional consistency with product sections?
-PASSES: arc sustained. MIXED: strong entry, flat mid-flow. FAILS: transactional past the hero.
-
-PRINCIPLE 9 — Figure / Ground (id:9)
-Navigation recedes in reading mode? Content recedes when nav is active?
-Mobile menu close re-establishes content ground cleanly?
-PASSES: shifts cleanly all states. MIXED: desktop correct, mobile slips. FAILS: consistent competition.
-
-PRINCIPLE 10 — Fitt's Law (id:10)
-All touch targets minimum 44x44px? Competing CTAs sufficiently separated?
-Primary action larger than secondary? Hand resting position considered?
-PASSES: all high-frequency targets correct. MIXED: desktop correct, mobile issues. FAILS: multiple violations.
-
-PRINCIPLE 11 — Hierarchy / Sequence (id:11)
-One unambiguous dominant element per screen? Sequence leads to ${preAudit.conversionGoal}?
-Primary CTA visually dominant over secondary actions?
-PASSES: clear per screen, leads to goal. MIXED: top-level clear, interior loses sequence. FAILS: elements compete.
-
-Same finding structure as above with correct ids 6-11.
-```
-
-### REFLECTIVE_PROMPT(url, preAudit)
-```
-Apply Drew Kinney's aesthetic-first UX framework (MFA Thesis, Miami IUA&D, 2009).
-Audit the interface at ${url} for these 4 Reflective principles.
-Pre-audit context: ${JSON.stringify(preAudit)}
-
-Return ONLY a JSON array of exactly 4 findings. No markdown. No prose.
-
-PRINCIPLE 12 — Learnable / Memorable (id:12)
-User returning after 30 days navigates immediately? System distinctive enough to remember?
-Consistent enough that each visit requires less effort?
-PASSES: learnable one session, memorable. MIXED: functional but generic. FAILS: relearning required.
-
-PRINCIPLE 13 — Mental Models (id:13)
-Interface matches: ${preAudit.mentalModel}?
-Where does it conflict? Are conflicts deliberate and supported?
-Handoffs (shopping→support→account) maintain the model?
-PASSES: model matched, conflicts intentional. MIXED: core matched, specific sections conflict. FAILS: frequent unexplained conflict.
-
-PRINCIPLE 14 — Process Funnel (id:14)
-Funnel narrows consistently to ${preAudit.conversionGoal}?
-Decisions at conversion point that belong earlier? Supplementary content disrupts flow?
-PASSES: consistent narrowing. MIXED: top-funnel correct, mid-funnel disruption. FAILS: widens at conversion.
-
-PRINCIPLE 15 — You Are Not the User (id:15)
-Evidence of user research? Patterns suggesting designer preference over user data?
-What would 5 real users hesitate on?
-PASSES: research-informed, no obvious overrides. MIXED: mostly research, one or two aesthetic wins. FAILS: designer preference dominant. UNSCORED: insufficient evidence.
-
-Same finding structure with ids 12-15.
-```
-
-### POST_DESKTOP_PROMPT(url, preAudit)
-```
-Audit the interface at ${url} for post-desktop surface requirements.
-Return ONLY a JSON array. No markdown. No prose.
-
-Check each: tap target size (44x44px min hit area), tap target proximity (8px min gap),
-hover state replacement (touch alternatives for all hover behaviors),
-one-handed use (primary controls in lower 60% on mobile),
-viewport shift (layout survives landscape/portrait rotation),
-ambient light (contrast in direct sunlight).
-
-Skip checks that genuinely don't apply. Mark them NOT APPLICABLE and exclude from output.
-
-Each check: {"check":"name","surface":"mobile web|desktop|etc","verdict":"PASSES|FAILS|MIXED|NOT APPLICABLE","evidence":"specific observation","fix":"specific action or null"}
-```
-
-## React Artifact Structure
-
-### Constants (top of file)
-```javascript
-const URL = "%%TARGET%%"  // Claude replaces %%TARGET%% with the actual url
-const MODELS = [
-  {id:"claude-sonnet-4-6", label:"Claude Sonnet 4.6", type:"anthropic"},
-  {id:"claude-opus-4-6", label:"Claude Opus 4.6", type:"anthropic"},
-  {id:"claude-haiku-4-5-20251001", label:"Claude Haiku 4.5", type:"anthropic"},
-  {id:"gpt-4o", label:"GPT-4o", type:"external", url:"https://chat.openai.com"},
-  {id:"gemini-2.5-pro", label:"Gemini 2.5 Pro", type:"external", url:"https://aistudio.google.com"},
-  {id:"mistral-large", label:"Mistral Large", type:"external", url:"https://console.mistral.ai"}
-]
-```
-
-### State
-```javascript
-const [preAudit, setPreAudit] = useState(null)
-const [preAuditStatus, setPreAuditStatus] = useState('loading')
-const [domains, setDomains] = useState({
-  visceral:   {status:'idle', findings:[]},
-  behavioral: {status:'idle', findings:[]},
-  reflective: {status:'idle', findings:[]},
-  postDesktop:{status:'idle', checks:[]}
-})
-const [screenshot, setScreenshot] = useState(null)
-const [checked, setChecked] = useState(new Set())
-const [activeTab, setActiveTab] = useState('findings')
-const [model, setModel] = useState('claude-sonnet-4-6')
-const [prompt, setPrompt] = useState('')
-const [sending, setSending] = useState(false)
-const [modelResponse, setModelResponse] = useState('')
-```
-
-### API Call Helper
-```javascript
-async function callClaude(systemPrompt, userMessage) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages: [{role:'user', content: userMessage}]
-    })
-  })
-  const data = await res.json()
-  const text = data.content?.filter(b=>b.type==='text').map(b=>b.text).join('') || ''
-  return text.replace(/```json|```/g,'').trim()
-}
-```
-
-### Mount Sequence
-```javascript
-useEffect(() => {
-  // Screenshot fires immediately, non-blocking
-  captureScreenshot()
-
-  // Pre-audit fires immediately
-  runPreAudit()
-}, [])
-
-async function runPreAudit() {
-  setPreAuditStatus('loading')
-  const raw = await callClaude(
-    'Return only valid JSON. No markdown. No prose.',
-    PRE_AUDIT_PROMPT(URL)
-  )
-  const result = JSON.parse(raw)
-  setPreAudit(result)
-  setPreAuditStatus('done')
-  // Fire all domains in parallel immediately after pre-audit
-  runAllDomains(result)
-}
-
-async function runAllDomains(pa) {
-  // All four fire simultaneously
-  Promise.allSettled([
-    runDomain('visceral',   VISCERAL_PROMPT(URL, pa),   'findings', 5),
-    runDomain('behavioral', BEHAVIORAL_PROMPT(URL, pa), 'findings', 6),
-    runDomain('reflective', REFLECTIVE_PROMPT(URL, pa), 'findings', 4),
-    runPostDesktop(POST_DESKTOP_PROMPT(URL, pa))
-  ])
-}
-
-async function runDomain(key, prompt, field, expectedCount) {
-  setDomains(prev => ({...prev, [key]: {status:'loading', findings:[]}}))
-  try {
-    const raw = await callClaude('Return only valid JSON array. No markdown. No prose.', prompt)
-    const findings = JSON.parse(raw)
-    // Auto-check FAILS and MIXED as they arrive
-    setChecked(prev => {
-      const next = new Set(prev)
-      findings.filter(f => f.verdict==='FAILS' || f.verdict==='MIXED')
-              .forEach(f => next.add(f.id))
-      return next
-    })
-    setDomains(prev => ({...prev, [key]: {status:'done', findings}}))
-  } catch(e) {
-    setDomains(prev => ({...prev, [key]: {status:'error', findings:[]}}))
-  }
-}
-```
-
-### Screenshot
-```javascript
-async function captureScreenshot() {
-  try {
-    const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent('https://'+URL)}&screenshot=true&meta=false&embed=screenshot.url`)
-    const data = await res.json()
-    if(data.data?.screenshot?.url) setScreenshot(data.data.screenshot.url)
-  } catch {}
-}
-```
-
-## Layout
-
-HEADER
-- Site URL (left) + live status indicator (pre-audit loading → done)
-- Scorecard pills update in real time as domains complete: Visceral X/5 | Behavioral X/6 | Reflective X/4 | Total X/15
-
-LEFT (60%) — Tab strip: Findings | Post-Desktop | Decisions | Validation
-- FINDINGS: Visceral → Behavioral → Reflective sections
-  Each section shows skeleton cards while loading, populates as domain resolves
-  Each card: checkbox + principle name + verdict badge + summary + expand toggle
-  Expanded: detail paragraph + amber recommendation block
-  FAILS/MIXED auto-checked on arrival
-
-- POST-DESKTOP: grid of check cards, populates as post-desktop call resolves
-
-- DECISIONS: numbered list from all FAILS/MIXED recommendations, each checkable
-
-- VALIDATION: single card with validation question, "Add to prompt" button
-
-RIGHT (40%) — Always visible, always interactive
-- Selection controls (select all failing / deselect all / count)
-- Model dropdown
-- Screenshot thumbnail (or loading state)
-- Generate Prompt button (active once any findings exist)
-- Prompt preview textarea
-- Send button → direct API call (Anthropic) or clipboard+navigate (external)
-- Response panel
-
-## Skeleton Loading
-
-While a domain is loading, show 3 skeleton cards with animated pulse.
-Do not block the UI. Other domains may already be populated.
-Skeleton uses the domain color (visceral=purple, behavioral=blue, reflective=green).
-
-## Score Calculation
-
-Scores update in real time as each domain resolves.
-PASSES counts as 1. FAILS/MIXED/UNSCORED count as 0.
-Total = sum of all PASSES across all domains.
+HTML prototype:
+- Hard 60-line limit in system prompt
+- Inline CSS only, no `<script>` tags
 
 ---
 
-## Progress Tracking
+## State
 
-Every loading stage gets a simulated progress bar using `useSimProgress(status)` hook.
+```javascript
+const [phase, setPhase]         // "input" | "loading" | "done"
+const [target, setTarget]       // URL or interface description
+const [step, setStep]           // 0=audit, 1=svg, 2=prototype
+const [pct, setPct]             // 0-100 progress
+const [audit, setAudit]         // parsed audit JSON
+const [svgMarkup, setSvgMarkup] // raw SVG string
+const [proto, setProto]         // raw HTML string
+const [err, setErr]             // error message string
+const [model, setModel]         // selected model ID
+const [copied, setCopied]       // prompt copy confirmation
+const [mdCopied, setMdCopied]   // markdown copy confirmation
+```
 
-### Hook logic
-- `status === 'loading'` → start setInterval at 350ms
-- Increments: fast early (3–10% per tick below 40%), slow mid (1.5–5.5% below 70%), crawl late (0.5–2% approaching 88%)
-- Hard cap at 88% — never reaches 100% while loading
-- `status === 'done'` → snap to 100% via transition
-- Cleanup: clearInterval on status change or unmount
+---
 
-### Visual layers
+## API Call Helper
 
-HEADER — overall progress bar (indigo gradient, 4px)
-  Fills based on completed stage count (stagesDone/5 × 100%)
+```javascript
+async function callClaude(messages, system) {
+  let raw = "";
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      system,
+      messages,
+    }),
+  });
+  raw = await res.text();
+  const data = JSON.parse(raw);
+  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+  if (!data.content) throw new Error("No content: " + raw.slice(0, 150));
+  return data.content.filter(b => b.type === "text").map(b => b.text).join("");
+}
+```
 
-HEADER — stage breakdown row (5 bars, one per stage)
-  Pre-audit: indigo | Visceral: purple | Behavioral: blue | Reflective: green | Post-desktop: amber
-  Each shows its own simProgress percentage to the right of its label
+No `anthropic-version` header. No API key header. Both are handled by the passthrough.
 
-DOMAIN SECTIONS — per-domain bar (2px, matches domain color)
-  Sits between the domain header and the first finding card
-  Shows live percentage during loading, fills to 100% on completion
+---
 
-SCREENSHOT PANEL — progress bar (2px, indigo) with percentage label
-  Fires on mount, resolves when Microlink returns
+## Audit JSON Schema
 
-### Transition
-All bars use: `transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1)`
-Smooth deceleration on each increment. Snaps instantly to 100% on done.
+```json
+{
+  "target": "Interface Name",
+  "visceral":   { "score": 8, "verdict": "6 words max" },
+  "behavioral": { "score": 6, "verdict": "6 words max" },
+  "reflective": { "score": 9, "verdict": "6 words max" },
+  "overall": 8,
+  "violations": [
+    {
+      "principle": "Principle Name",
+      "severity": "high",
+      "finding": "12 words max describing what breaks",
+      "fix": "12 words max describing the exact change"
+    }
+  ],
+  "strengths": ["Principle Name"],
+  "validationQuestion": "10 words max"
+}
+```
+
+Severity values: `high`, `medium`, `low` only.
+
+---
+
+## Image Model Selector
+
+Seven models. One renders automatically (Claude SVG). Six generate copyable prompts for external platforms.
+
+```javascript
+const MODELS = [
+  { id: "claude",     label: "Claude SVG",      url: null },
+  { id: "nanoBanana", label: "Nano Banana Pro",  url: "https://aistudio.google.com/prompts/new_chat" },
+  { id: "gpt4o",      label: "GPT-4o",           url: "https://chat.openai.com" },
+  { id: "dalle",      label: "DALL-E 3",         url: "https://labs.openai.com" },
+  { id: "midjourney", label: "Midjourney",       url: "https://www.midjourney.com" },
+  { id: "ideogram",   label: "Ideogram",         url: "https://ideogram.ai" },
+  { id: "sdxl",       label: "Stable Diffusion", url: "https://replicate.com/stability-ai/sdxl" },
+]
+```
+
+Each external model receives a prompt built from `audit.target`, top 2 `violation.fix` strings, and top 2 `strength` strings. Prompt format varies by platform syntax:
+
+| Model | Key Format Differences |
+|---|---|
+| Nano Banana Pro | Emphasizes text rendering accuracy, hex colors, 4K output |
+| GPT-4o | Descriptive UI brief, realistic desktop framing |
+| DALL-E 3 | Photorealistic UI mockup framing |
+| Midjourney | `--ar 16:9 --style raw --v 6.1 --q 2` suffixes |
+| Ideogram | Typography-forward, layout-specific |
+| Stable Diffusion XL | Tag-style with `photorealistic, 8k` quality modifiers |
+
+Selecting a model updates the displayed prompt and copy button label. External models show an outbound link to the platform.
+
+---
+
+## Markdown Report
+
+Generated client-side from audit state. No API call.
+
+```javascript
+function buildMarkdown(audit, target, svgMarkup, model) {
+  // Returns full audit report as Markdown string
+  // Includes: domain score table, violations, strengths,
+  //           validation question, model-specific image prompt,
+  //           SVG markup in code block
+}
+```
+
+Two export controls in the header:
+- `COPY MD` — `navigator.clipboard.writeText(md)`
+- `↓ REPORT.MD` — `URL.createObjectURL(blob)` + anchor download trigger
+
+Report filename: `audit-[target-slug].md`
+
+---
+
+## Layout
+
+### Input Phase
+Centered single-column form. Target text input (Enter to submit). Error display. RUN AUDIT button.
+
+### Loading Phase
+Step label. Animated progress bar (red `#FF3D00` fill, tick marker). Three step indicators (AUDIT / SVG / BUILD) with color state: completed=`#00E5A0`, active=`#FF3D00`, pending=`#1A1A1A`. Percentage readout.
+
+### Done Phase — three sections top to bottom
+
+**Header bar** (always visible)
+- Left: tool name
+- Right: COPY MD + REPORT.MD + NEW AUDIT buttons
+
+**Two-panel row (70vh)**
+
+Left panel — Audit Report (scrollable):
+- Interface name (DM Serif Display)
+- Three domain score cards (color-coded top border)
+- Overall score (large numeral)
+- Violations (severity-colored left border, finding + fix)
+- Strengths (tag pills)
+- Validation question (italic)
+
+Right panel — Image Output:
+- Model selector pills (top, sticky)
+- Claude SVG mockup (inline render, width 100%)
+- Model prompt label + external link
+- Prompt text block (scrollable)
+- Copy prompt button
+- CSP note for external models
+
+**Prototype row (68vh)**
+- Label bar
+- Sandboxed iframe (`sandbox="allow-scripts"`)
+
+---
+
+## CSP Constraint Reference
+
+Artifact sandbox `connect-src` allowlist (abbreviated):
+```
+https://api.anthropic.com      ← passthrough, works
+https://cdnjs.cloudflare.com   ← CDN libs, works
+https://cdn.jsdelivr.net       ← CDN libs, works
+https://www.claudeusercontent.com
+```
+
+Blocked (all image generation APIs):
+```
+https://generativelanguage.googleapis.com  ← Nano Banana Pro / Gemini
+https://api.openai.com                     ← GPT-4o / DALL-E
+https://api.stability.ai                   ← Stable Diffusion
+https://api.replicate.com                  ← Replicate
+https://api.ideogram.ai                    ← Ideogram
+```
+
+This is not fixable from component code. Image generation must happen externally via copied prompts.
+
+---
+
+## Design System
+
+```
+Fonts:       Bebas Neue (labels), DM Serif Display (display), JetBrains Mono (UI/data)
+Background:  #0A0A0A root  |  #0D0D0D surface  |  #080808 bars  |  #141414 borders
+Text:        #F0EBE0 primary  |  #999 secondary  |  #666 muted  |  #444 labels
+Scores:      #00E5A0 (>=8)  |  #FFD600 (>=6)  |  #FF3D00 (<6)
+Severity:    #FF3D00 high  |  #FFD600 medium  |  #00E5A0 low
+Accent:      #FF3D00
+```
+
+---
+
+## Files
+
+```
+interactive-design-aesthetics/
+  SKILL.md          ← Framework documentation + dashboard overview
+  DASHBOARD.md      ← This file — technical specification
+  design-audit.jsx  ← React artifact implementation
+  BEHAVIORAL.md     ← Behavioral domain detail
+  REFLECTIVE.md     ← Reflective domain detail
+  VISCERAL.md       ← Visceral domain detail
+  POST-DESKTOP.md   ← Post-desktop rules detail
+  PRE-AUDIT.md      ← Pre-audit questions
+  HANDOFF.md        ← Design handoff guidance
+```
