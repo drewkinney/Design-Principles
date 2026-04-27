@@ -154,6 +154,7 @@ export default function App() {
   const [model, setModel]       = useState("claude");
   const [copied, setCopied]     = useState(false);
   const [mdCopied, setMdCopied] = useState(false);
+  const [mdOverlay, setMdOverlay] = useState(false);
 
   useEffect(() => {
     const s = document.createElement("style");
@@ -208,17 +209,6 @@ export default function App() {
   function copyPrompt() {
     if (!audit) return;
     navigator.clipboard.writeText(buildPrompt(audit, model)).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
-  }
-
-  function downloadMarkdown() {
-    const md = buildMarkdown(audit, target, svgMarkup, model);
-    const blob = new Blob([md], { type: "text/markdown" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href     = url;
-    a.download = `audit-${(audit?.target || target).toLowerCase().replace(/[^a-z0-9]/g, "-")}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
   }
 
   function copyMarkdown() {
@@ -279,13 +269,9 @@ export default function App() {
     <div style={{ fontFamily: "'JetBrains Mono',monospace", background: "#0A0A0A", color: "#F0EBE0" }}>
       <Bar right={
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={copyMarkdown} style={{ ...GHOST_BTN, color: mdCopied ? "#00E5A0" : "#555" }}
-            onMouseEnter={e => e.currentTarget.style.color="#F0EBE0"} onMouseLeave={e => e.currentTarget.style.color=mdCopied?"#00E5A0":"#555"}>
-            {mdCopied ? "MD COPIED ✓" : "COPY MD"}
-          </button>
-          <button onClick={downloadMarkdown} style={{ ...GHOST_BTN }}
+          <button onClick={() => setMdOverlay(true)} style={{ ...GHOST_BTN }}
             onMouseEnter={e => e.currentTarget.style.color="#F0EBE0"} onMouseLeave={e => e.currentTarget.style.color="#555"}>
-            ↓ REPORT.MD
+            REPORT.MD
           </button>
           <button onClick={() => setPhase("input")} style={{ ...GHOST_BTN }}
             onMouseEnter={e => e.currentTarget.style.color="#F0EBE0"} onMouseLeave={e => e.currentTarget.style.color="#555"}>
@@ -421,6 +407,44 @@ export default function App() {
         </div>
         <iframe srcDoc={proto} style={{ width: "100%", height: "68vh", border: "none", display: "block" }} title="Prototype" sandbox="allow-scripts" />
       </div>
+
+      {/* MD OVERLAY */}
+      {mdOverlay && (
+        <div onClick={() => setMdOverlay(false)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", zIndex: 100,
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "#0D0D0D", border: "1px solid #242424", width: "100%", maxWidth: 720,
+            maxHeight: "85vh", display: "flex", flexDirection: "column",
+          }}>
+            <div style={{ padding: "14px 20px", borderBottom: "1px solid #1A1A1A", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <div style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 13, letterSpacing: 4, color: "#F0EBE0" }}>
+                REPORT — {(audit.target || target).toUpperCase()}
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={copyMarkdown} style={{ ...GHOST_BTN, color: mdCopied ? "#00E5A0" : "#555", borderColor: mdCopied ? "#00E5A030" : "#1A1A1A" }}
+                  onMouseEnter={e => { if (!mdCopied) e.currentTarget.style.color="#F0EBE0"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = mdCopied ? "#00E5A0" : "#555"; }}>
+                  {mdCopied ? "COPIED ✓" : "COPY"}
+                </button>
+                <button onClick={() => setMdOverlay(false)} style={{ ...GHOST_BTN, fontSize: 12, padding: "5px 10px" }}
+                  onMouseEnter={e => e.currentTarget.style.color="#FF3D00"} onMouseLeave={e => e.currentTarget.style.color="#555"}>
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+              <pre style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: "#AAA", lineHeight: 1.85, whiteSpace: "pre-wrap", wordBreak: "break-word", margin: 0 }}>
+                {buildMarkdown(audit, target, svgMarkup, model)}
+              </pre>
+            </div>
+            <div style={{ padding: "10px 20px", borderTop: "1px solid #1A1A1A", fontSize: 8, color: "#2A2A2A", letterSpacing: 2, flexShrink: 0 }}>
+              CLICK OUTSIDE TO CLOSE
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
