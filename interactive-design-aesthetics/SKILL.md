@@ -3,14 +3,17 @@ name: interactive-design-aesthetics
 description: >
   Audits any website, app, or interface against Drew Kinney's aesthetic-first
   interactive design framework — 15 principles across Norman's three affect domains
-  (Visceral, Behavioral, Reflective). Triggers on: /interactive-design-aesthetics,
-  any request to audit, critique, evaluate, or redesign a UI or UX, references to
-  affordance, hierarchy, color psychology, navigation, interaction patterns, or user
-  trust. Renders findings as an interactive dashboard artifact — not a text report —
-  with checkboxes per finding, live screenshot capture, model selector, and one-click
-  prompt dispatch to Claude or external models. Use when asked to design, audit,
-  wireframe, prototype, or evaluate any interactive surface including websites,
-  apps, touch interfaces, kiosks, spatial UI, and data visualizations.
+  (Visceral, Behavioral, Reflective) plus post-desktop surface checks. Triggers on:
+  /interactive-design-aesthetics, any request to audit, critique, evaluate, or redesign
+  a UI or UX, references to affordance, hierarchy, color psychology, navigation,
+  interaction patterns, or user trust. Renders a self-running React dashboard
+  immediately — the artifact conducts its own parallel audit via API calls, populates
+  domain by domain with live progress bars, auto-checks FAILS and MIXED findings,
+  generates model-specific redesign prompts with screenshot context, and exports the
+  full audit as Markdown or Word. Claude extracts the URL and renders the shell.
+  The artifact does the rest. Use when asked to design, audit, wireframe, prototype,
+  or evaluate any interactive surface including websites, apps, touch interfaces,
+  kiosks, spatial UI, and data visualizations.
 sub_skills:
   - DASHBOARD.md
 ---

@@ -6,49 +6,90 @@ The desktop metaphor died. Design kept decorating its corpse. Touch, spatial, am
 
 ## /interactive-design-aesthetics
 
-A Claude skill that audits any website, app, or interface against Drew Kinney's aesthetic-first interactive design framework — derived from his 2009 MFA thesis at Miami International University of Art & Design — and delivers findings as an interactive dashboard, not a text report.
+A Claude skill that audits any website, app, or interface against Drew Kinney's aesthetic-first interactive design framework — derived from his 2009 MFA thesis at Miami International University of Art & Design — and delivers findings as a self-running interactive dashboard. The dashboard conducts its own audit via parallel API calls. Claude renders the shell immediately. No waiting for a text report.
 
 ### What it does
 
-Point it at a URL or describe an interface. The skill runs a structured audit across 15 design principles organized into Norman's three affect domains (Visceral, Behavioral, Reflective), then renders an interactive dashboard where you review findings, flag issues for correction, and dispatch a targeted prompt to the AI model of your choice.
+Point it at a URL. The dashboard renders instantly and fires its own structured audit — pre-audit context first, then five parallel API calls covering all 15 design principles across Norman's three affect domains (Visceral, Behavioral, Reflective) plus post-desktop surface checks. Each domain populates in real time as its call resolves. FAILS and MIXED findings auto-check on arrival. Simulated progress bars across all stages give live visual feedback throughout.
 
-The dashboard captures a live screenshot of the audited site, pre-checks all failing and mixed findings, and passes the screenshot as an image alongside the prompt when sending to a Claude model — so the receiving model has direct visual context, not just a description.
+When the audit completes: select the issues you want corrected, choose a target model, and generate a redesign prompt. The prompt instructs the model to use the live screenshot of the audited site and produce specific visual redesigns — not a list of problems, but implementation-ready corrections with CSS, layout, copy, and component detail. Anthropic models receive the screenshot as an image block. External models get the prompt copied to the clipboard and the model URL opened in a new tab.
+
+Download the full audit as Markdown or a Word-compatible document from the header. Export at any point during or after the audit.
 
 ### What's included
 
 ```
 interactive-design-aesthetics/
-├── SKILL.md       Audit engine — 15 principles, four pre-audit questions,
-│                  structured JSON output spec, output rules
-├── DASHBOARD.md   React artifact spec — findings grouped by domain,
-│                  checkboxes, scorecard, select controls
-└── HANDOFF.md     Prompt assembly template, Microlink screenshot capture,
-                   Anthropic API direct call with image block,
-                   external model clipboard + navigate fallback
+├── SKILL.md          Orchestrator — extracts URL, renders artifact immediately.
+│                     All audit logic runs inside the artifact, not here.
+├── PRE-AUDIT.md      Four framing questions: lead emotion, mental model,
+│                     conversion goal, actual user. Runs first, sequential.
+├── VISCERAL.md       Principles 1–5 audit spec and scoring rubric.
+├── BEHAVIORAL.md     Principles 6–11 audit spec and scoring rubric.
+├── REFLECTIVE.md     Principles 12–15 audit spec and scoring rubric.
+├── POST-DESKTOP.md   Touch/spatial checks: tap targets, hover replacement,
+│                     one-handed use, viewport shift, ambient light.
+├── DASHBOARD.md      Self-running React artifact spec. Embeds all audit prompts.
+│                     Parallel API calls, progress bars, popup modals,
+│                     download engine, redesign prompt builder.
+└── HANDOFF.md        Prompt assembly, Microlink screenshot capture,
+                      Anthropic API dispatch with image block,
+                      external model clipboard + navigate fallback.
 ```
 
-**SKILL.md** runs the audit and compiles all findings into a structured JSON object. It does not output raw markdown. It delegates rendering entirely to the sub-skills.
+**SKILL.md** is a two-step orchestrator: extract the target URL, render the artifact. That is all. The artifact runs the audit itself.
 
-**DASHBOARD.md** defines the React artifact: findings grouped by Visceral, Behavioral, and Reflective domains; verdict badges (PASSES / FAILS / MIXED / UNSCORED); expand/collapse per finding; FAILS and MIXED pre-checked by default; scorecard pills in the header; Select All Failing and Deselect All controls.
+**PRE-AUDIT.md, VISCERAL.md, BEHAVIORAL.md, REFLECTIVE.md, POST-DESKTOP.md** define the audit logic and scoring rubric for each domain. Their prompt content is embedded directly in the artifact as constants so the dashboard can fire its own API calls without Claude's involvement.
 
-**HANDOFF.md** handles the right-panel action layer: builds the correction prompt from checked findings using a structured template, captures a screenshot via Microlink API (free, no key required), and dispatches. For Anthropic models it calls the API directly and attaches the screenshot as a base64 image block. For external models (GPT-4o, Gemini 2.5 Pro, Mistral Large) it copies the prompt to the clipboard and opens the model URL in a new tab.
+**DASHBOARD.md** specifies the full self-running React artifact: parallel API calls via Promise.allSettled, domain-by-domain state population, simulated progress bars using a useSimProgress hook (fast early, crawls near 88%, snaps to 100% on resolution), auto-checked findings, a Generate Prompt popup with per-model format switching, and a Download modal with Markdown and Word export.
+
+**HANDOFF.md** defines prompt assembly, screenshot capture via Microlink (free, no key), and model dispatch logic.
+
+### Execution flow
+
+```
+Trigger → SKILL.md extracts URL → artifact renders immediately
+  ↓
+Screenshot capture fires (Microlink, parallel, non-blocking)
+  ↓
+PRE-AUDIT API call fires (sequential — results frame everything else)
+  ↓
+VISCERAL + BEHAVIORAL + REFLECTIVE + POST-DESKTOP fire simultaneously
+  ↓
+Each domain populates as its call resolves — no waiting for others
+FAILS and MIXED auto-checked on arrival
+Progress bars update live across all five stages
+  ↓
+Audit complete — Download Report button activates in header
+  ↓
+Select issues → Generate Prompt → popup opens
+  ↓
+Choose model format (Claude / GPT-4o / Gemini / Mistral)
+Copy prompt or send directly to Anthropic models with screenshot attached
+```
 
 ### Model options
 
-| Model | Type | Default |
-|---|---|---|
-| Claude Sonnet 4.6 | Anthropic direct API | Yes |
-| Claude Opus 4.6 | Anthropic direct API | |
-| Claude Haiku 4.5 | Anthropic direct API | |
-| GPT-4o | Clipboard + openai.com | |
-| Gemini 2.5 Pro | Clipboard + aistudio.google.com | |
-| Mistral Large | Clipboard + console.mistral.ai | |
+| Model | Type | Prompt format | Default |
+|---|---|---|---|
+| Claude Sonnet 4.6 | Anthropic direct API | Structured markdown + image block | Yes |
+| Claude Opus 4.6 | Anthropic direct API | Structured markdown + image block | |
+| Claude Haiku 4.5 | Anthropic direct API | Structured markdown + image block | |
+| GPT-4o | Clipboard + openai.com | Explicit image reference | |
+| Gemini 2.5 Pro | Clipboard + aistudio.google.com | Visual analysis framing | |
+| Mistral Large | Clipboard + console.mistral.ai | Text only (no vision) | |
 
 ### The 15 principles
 
-Aesthetic Effect, Affordance, Proximity/Chunking, Color & Psychology, Common Fate, Consistency/Similarity, Efficiency of Use, Experience/Emotion, Figure/Ground, Fitt's Law, Hierarchy/Sequence, Learnable/Memorable, Mental Models, Process Funnel, You Are Not the User.
+Grouped by Norman affect domain:
 
-Each scored PASSES / FAILS / MIXED / UNSCORED, assigned to a Norman domain, and accompanied by a finding summary, full detail, and a specific recommendation when the verdict is not PASSES.
+**Visceral** — Aesthetic Effect, Affordance, Proximity/Chunking, Color & Psychology, Common Fate
+
+**Behavioral** — Consistency/Similarity, Efficiency of Use, Experience/Emotion, Figure/Ground, Fitt's Law, Hierarchy/Sequence
+
+**Reflective** — Learnable/Memorable, Mental Models, Process Funnel, You Are Not the User
+
+Each scored PASSES / FAILS / MIXED / UNSCORED with a one-line summary, a 2–4 sentence finding, and a specific implementable recommendation when the verdict is not PASSES.
 
 ---
 
@@ -69,34 +110,25 @@ Claude reads skill directories on load. The `SKILL.md` description field tells C
 
 ### Trigger it in conversation
 
-Type `/interactive-design-aesthetics` followed by a URL or interface description:
-
 ```
 /interactive-design-aesthetics apple.com
 /interactive-design-aesthetics our checkout flow on mobile
 /interactive-design-aesthetics [paste a description of the interface]
 ```
 
-Claude runs the audit, renders the dashboard artifact, and waits for your input.
+The artifact renders immediately. The audit runs inside it. No waiting.
 
 ### Use the dashboard
 
-1. Expand any finding card to read the full detail and recommendation
-2. Check the issues you want corrected — FAILS and MIXED are pre-checked by default
-3. Use Select All Failing or Deselect All as needed
-4. Choose your target model from the dropdown
-5. Click Generate Prompt — the assembled prompt appears in the right panel
-6. Click Send to Model — Claude models get a direct API call with the screenshot attached; external models get clipboard + browser open
-
-### Export as file
-
-After review, ask Claude to export the audit:
-
-```
-export this as a markdown file
-export this as a word doc
-```
-
+1. Watch the audit populate domain by domain — progress bars track each stage
+2. Expand any finding to read the detail and recommendation
+3. FAILS and MIXED are pre-checked — adjust selection as needed
+4. Use **Select all failing** or **Clear** in the action panel
+5. Choose your target model from the dropdown
+6. Click **Generate prompt** — a popup opens with the redesign prompt
+7. Switch prompt format to match your target model if sending externally
+8. Copy the prompt or click **Send** — Anthropic models receive the screenshot; external models get clipboard + browser
+9. Click **Download report** in the header to export as Markdown or Word
 
 ---
 
