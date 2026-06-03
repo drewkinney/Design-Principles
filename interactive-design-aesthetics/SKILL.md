@@ -31,13 +31,15 @@ Designers who wait for engineers to finish building before applying aesthetics a
 
 ## Three Affect Domains (Norman)
 
-Sequential. All three required.
+Sequential. All three required. Five principles run in parallel across all three.
 
-| Domain | What | Target |
-|---|---|---|
-| **Visceral** | First-contact impact | Trust, attraction |
-| **Behavioral** | Usability of actual use | Ease, feedback, efficiency |
-| **Reflective** | Memory after use | Loyalty, return |
+| Principle | **Visceral** — first contact → trust | **Behavioral** — use → ease | **Reflective** — memory → loyalty |
+|---|---|---|---|
+| **Signal** | Color and aesthetic effect set emotional tone before any interaction | Affordance declares what's interactive; figure/ground guides active focus | Consistency makes the signal system recognizable — users trust what they already know |
+| **Order** | Hierarchy establishes the dominant element — first path the eye follows | Proximity and chunking make content findable; sequence guides task completion | Learnable systems encode structure; users never reorient on return |
+| **Momentum** | Common fate groups elements in the first moment — motion before thought | Fitt's Law and efficiency minimize time-to-goal on every interaction | Smooth arc leaves no friction residue — nothing the user remembers fighting |
+| **Alignment** | Aesthetic effect primes emotional expectation before any action | Mental models determine whether the system feels native or alien | You Are Not the User — only observed use validates alignment over time |
+| **Arc** | Experience and emotion are designed, not left to emerge | Process funnel preserves the user's place at every interruption | Completed arcs build loyalty; broken arcs don't recover |
 
 Visceral primes Behavioral. "If it looks good, it works better" is not irrational — it's how perception works. Skip Visceral and users start every interaction fighting friction. Reflective never recovers.
 
@@ -139,6 +141,48 @@ The desktop metaphor is dead in practice. Touch, spatial, voice, and ambient sur
 - Funnel: place in flow preserved?
 
 **Testing:** Observe. Don't explain. Don't help. Record hesitation. Hesitation is data.
+
+---
+
+## Sub-Skill Architecture
+
+Three domain orchestrators run in parallel. Each spawns 5 leaf evaluations, collects findings, returns its domain array to HANDOFF.md for compilation.
+
+```
+PRE-AUDIT.md
+    ↓
+┌─────────────┬──────────────┬──────────────┐
+VISCERAL.md   BEHAVIORAL.md  REFLECTIVE.md
+    ↓               ↓               ↓
+alignment       signal          signal
+signal          order           order
+momentum        momentum        momentum
+order           alignment       alignment
+arc             arc             arc
+    ↓               ↓               ↓
+visceral_[]   behavioral_[]  reflective_[]
+    └───────────────┴───────────────┘
+                    ↓
+              HANDOFF.md
+```
+
+| Domain | File | Meta-Principle | Principle |
+|---|---|---|---|
+| Visceral | visceral/alignment.md | Alignment | Aesthetic Effect |
+| Visceral | visceral/signal.md | Signal | Color & Psychology |
+| Visceral | visceral/momentum.md | Momentum | Common Fate |
+| Visceral | visceral/order.md | Order | Hierarchy / Sequence |
+| Visceral | visceral/arc.md | Arc | Experience / Emotion |
+| Behavioral | behavioral/signal.md | Signal | Affordance + Figure/Ground |
+| Behavioral | behavioral/order.md | Order | Proximity / Chunking |
+| Behavioral | behavioral/momentum.md | Momentum | Fitt's Law + Efficiency |
+| Behavioral | behavioral/alignment.md | Alignment | Mental Models |
+| Behavioral | behavioral/arc.md | Arc | Process Funnel |
+| Reflective | reflective/signal.md | Signal | Consistency / Similarity |
+| Reflective | reflective/order.md | Order | Learnable / Memorable |
+| Reflective | reflective/momentum.md | Momentum | Memory Residue |
+| Reflective | reflective/alignment.md | Alignment | You Are Not the User |
+| Reflective | reflective/arc.md | Arc | Loyalty / Return |
 
 ---
 
