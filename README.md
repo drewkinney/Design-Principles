@@ -10,7 +10,7 @@ A Claude skill that audits any website, app, or interface against Drew Kinney's 
 
 ### What it does
 
-Point it at a URL. The dashboard renders instantly and fires its own structured audit — pre-audit context first, then five parallel API calls covering all 15 design principles across Norman's three affect domains (Visceral, Behavioral, Reflective) plus post-desktop surface checks. Each domain populates in real time as its call resolves. FAILS and MIXED findings auto-check on arrival. Simulated progress bars across all stages give live visual feedback throughout.
+Point it at a URL. The dashboard renders instantly and fires its own structured audit — pre-audit context first, then the three affect domains evaluated in parallel, each spawning five principle evaluations, plus post-desktop surface checks. Each domain populates in real time as its calls resolve. FAILS and MIXED findings auto-check on arrival. Simulated progress bars across all stages give live visual feedback throughout.
 
 When the audit completes: select the issues you want corrected, choose a target model, and generate a redesign prompt. The prompt instructs the model to use the live screenshot of the audited site and produce specific visual redesigns — not a list of problems, but implementation-ready corrections with CSS, layout, copy, and component detail. Anthropic models receive the screenshot as an image block. External models get the prompt copied to the clipboard and the model URL opened in a new tab.
 
@@ -20,28 +20,55 @@ Download the full audit as Markdown or a Word-compatible document from the heade
 
 ```
 interactive-design-aesthetics/
-├── SKILL.md          Orchestrator — extracts URL, renders artifact immediately.
-│                     All audit logic runs inside the artifact, not here.
-├── PRE-AUDIT.md      Four framing questions: lead emotion, mental model,
-│                     conversion goal, actual user. Runs first, sequential.
-├── VISCERAL.md       Principles 1–5 audit spec and scoring rubric.
-├── BEHAVIORAL.md     Principles 6–11 audit spec and scoring rubric.
-├── REFLECTIVE.md     Principles 12–15 audit spec and scoring rubric.
-├── POST-DESKTOP.md   Touch/spatial checks: tap targets, hover replacement,
-│                     one-handed use, viewport shift, ambient light.
-├── DASHBOARD.md      Self-running React artifact spec. Embeds all audit prompts.
-│                     Parallel API calls, progress bars, popup modals,
-│                     download engine, redesign prompt builder.
-└── HANDOFF.md        Prompt assembly, Microlink screenshot capture,
-                      Anthropic API dispatch with image block,
-                      external model clipboard + navigate fallback.
+├── SKILL.md              Orchestrator — extracts URL, renders artifact.
+│                         All audit logic runs inside the artifact, not here.
+├── PRE-AUDIT.md          Four framing questions: lead emotion, mental model,
+│                         conversion goal, actual user. Runs first, sequential.
+├── VISCERAL.md           Domain orchestrator. Spawns visceral/ leaf evaluations
+│                         in parallel, returns visceral_findings[].
+├── BEHAVIORAL.md         Domain orchestrator. Spawns behavioral/ leaf evaluations
+│                         in parallel, returns behavioral_findings[].
+├── REFLECTIVE.md         Domain orchestrator. Spawns reflective/ leaf evaluations
+│                         in parallel, returns reflective_findings[].
+├── visceral/
+│   ├── alignment.md      Aesthetic Effect
+│   ├── signal.md         Color & Psychology
+│   ├── momentum.md       Common Fate
+│   ├── order.md          Hierarchy / Sequence
+│   └── arc.md            Experience / Emotion
+├── behavioral/
+│   ├── signal.md         Affordance + Figure/Ground
+│   ├── order.md          Proximity / Chunking
+│   ├── momentum.md       Fitt's Law + Efficiency of Use
+│   ├── alignment.md      Mental Models
+│   └── arc.md            Process Funnel
+├── reflective/
+│   ├── signal.md         Consistency / Similarity
+│   ├── order.md          Learnable / Memorable
+│   ├── momentum.md       Memory Residue
+│   ├── alignment.md      You Are Not the User
+│   └── arc.md            Loyalty / Return
+├── POST-DESKTOP.md       Touch/spatial checks: tap targets, hover replacement,
+│                         one-handed use, viewport shift, ambient light.
+├── DASHBOARD.md          Self-running React artifact spec. Embeds all audit prompts.
+│                         Parallel API calls, progress bars, popup modals,
+│                         download engine, redesign prompt builder.
+└── HANDOFF.md            Prompt assembly, Microlink screenshot capture,
+                          Anthropic API dispatch with image block,
+                          external model clipboard + navigate fallback.
 ```
 
-**SKILL.md** is a two-step orchestrator: extract the target URL, render the artifact. That is all. The artifact runs the audit itself.
+**SKILL.md** is a two-step orchestrator: extract the target URL, render the artifact. The artifact runs the audit itself.
 
-**PRE-AUDIT.md, VISCERAL.md, BEHAVIORAL.md, REFLECTIVE.md, POST-DESKTOP.md** define the audit logic and scoring rubric for each domain. Their prompt content is embedded directly in the artifact as constants so the dashboard can fire its own API calls without Claude's involvement.
+**PRE-AUDIT.md** fires first, sequential. Its output frames all domain evaluations — lead emotion, mental model, conversion goal, actual user.
 
-**DASHBOARD.md** specifies the full self-running React artifact: parallel API calls via Promise.allSettled, domain-by-domain state population, simulated progress bars using a useSimProgress hook (fast early, crawls near 88%, snaps to 100% on resolution), auto-checked findings, a Generate Prompt popup with per-model format switching, and a Download modal with Markdown and Word export.
+**VISCERAL.md, BEHAVIORAL.md, REFLECTIVE.md** are domain orchestrators. Each spawns its five leaf evaluations in parallel, collects five finding objects, and returns its domain array. They run concurrently after PRE-AUDIT completes.
+
+**The leaf files** (visceral/, behavioral/, reflective/) are single-principle evaluation specs. Each returns one finding object: principle, meta-principle, domain, verdict, summary, detail, recommendation.
+
+**POST-DESKTOP.md** runs in parallel with the three domain orchestrators. Surface-specific checks for touch, spatial, and non-desktop contexts.
+
+**DASHBOARD.md** specifies the full self-running React artifact: parallel API calls via Promise.allSettled, domain-by-domain state population, simulated progress bars, auto-checked findings, a Generate Prompt popup with per-model format switching, and a Download modal with Markdown and Word export.
 
 **HANDOFF.md** defines prompt assembly, screenshot capture via Microlink (free, no key), and model dispatch logic.
 
@@ -52,44 +79,50 @@ Trigger → SKILL.md extracts URL → artifact renders immediately
   ↓
 Screenshot capture fires (Microlink, parallel, non-blocking)
   ↓
-PRE-AUDIT API call fires (sequential — results frame everything else)
+PRE-AUDIT fires (sequential — results frame everything else)
   ↓
 VISCERAL + BEHAVIORAL + REFLECTIVE + POST-DESKTOP fire simultaneously
   ↓
-Each domain populates as its call resolves — no waiting for others
-FAILS and MIXED auto-checked on arrival
-Progress bars update live across all five stages
+Each domain orchestrator spawns its 5 leaf evaluations in parallel
   ↓
-Audit complete — Download Report button activates in header
+Findings return up the chain → domain arrays compile → HANDOFF.md
+  ↓
+Each domain populates as its calls resolve — no waiting for others
+FAILS and MIXED auto-checked on arrival
+  ↓
+Audit complete — Download Report activates in header
   ↓
 Select issues → Generate Prompt → popup opens
   ↓
-Choose model format (Claude / GPT-4o / Gemini / Mistral)
-Copy prompt or send directly to Anthropic models with screenshot attached
+Choose model format — copy prompt or send directly
+Anthropic models receive screenshot as image block
+External models get clipboard + browser
 ```
+
+### Five parallel principles × three domains
+
+Each domain evaluates the same five meta-principles. The principle under each varies by domain — same structure, different layer of the experience.
+
+| Meta-Principle | Visceral | Behavioral | Reflective |
+|---|---|---|---|
+| **Signal** | Color & Psychology | Affordance + Figure/Ground | Consistency / Similarity |
+| **Order** | Hierarchy / Sequence | Proximity / Chunking | Learnable / Memorable |
+| **Momentum** | Common Fate | Fitt's Law + Efficiency | Memory Residue |
+| **Alignment** | Aesthetic Effect | Mental Models | You Are Not the User |
+| **Arc** | Experience / Emotion | Process Funnel | Loyalty / Return |
+
+Each scored PASSES / FAILS / MIXED / UNSCORED with a one-line summary, a 2–4 sentence finding, and a specific implementable recommendation when the verdict is not PASSES.
 
 ### Model options
 
 | Model | Type | Prompt format | Default |
 |---|---|---|---|
 | Claude Sonnet 4.6 | Anthropic direct API | Structured markdown + image block | Yes |
-| Claude Opus 4.6 | Anthropic direct API | Structured markdown + image block | |
+| Claude Opus 4.8 | Anthropic direct API | Structured markdown + image block | |
 | Claude Haiku 4.5 | Anthropic direct API | Structured markdown + image block | |
 | GPT-4o | Clipboard + openai.com | Explicit image reference | |
 | Gemini 2.5 Pro | Clipboard + aistudio.google.com | Visual analysis framing | |
 | Mistral Large | Clipboard + console.mistral.ai | Text only (no vision) | |
-
-### The 15 principles
-
-Grouped by Norman affect domain:
-
-**Visceral** — Aesthetic Effect, Affordance, Proximity/Chunking, Color & Psychology, Common Fate
-
-**Behavioral** — Consistency/Similarity, Efficiency of Use, Experience/Emotion, Figure/Ground, Fitt's Law, Hierarchy/Sequence
-
-**Reflective** — Learnable/Memorable, Mental Models, Process Funnel, You Are Not the User
-
-Each scored PASSES / FAILS / MIXED / UNSCORED with a one-line summary, a 2–4 sentence finding, and a specific implementable recommendation when the verdict is not PASSES.
 
 ---
 
@@ -97,18 +130,13 @@ Each scored PASSES / FAILS / MIXED / UNSCORED with a one-line summary, a 2–4 s
 
 ### Install the skill in Claude
 
-Claude skills live at `/mnt/skills/user/` in Claude's container environment. To install:
-
-1. Clone this repo
-2. Copy the `interactive-design-aesthetics/` directory into `/mnt/skills/user/`
-
 ```
 cp -r interactive-design-aesthetics /mnt/skills/user/
 ```
 
 Claude reads skill directories on load. The `SKILL.md` description field tells Claude when to trigger the skill automatically.
 
-### Trigger it in conversation
+### Trigger it
 
 ```
 /interactive-design-aesthetics apple.com
@@ -116,7 +144,7 @@ Claude reads skill directories on load. The `SKILL.md` description field tells C
 /interactive-design-aesthetics [paste a description of the interface]
 ```
 
-The artifact renders immediately. The audit runs inside it. No waiting.
+The artifact renders immediately. The audit runs inside it.
 
 ### Use the dashboard
 
