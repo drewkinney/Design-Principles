@@ -19,97 +19,58 @@ Claude's role when invoking the dashboard: inject the target and render the arti
 
 ## Architecture
 
-### Three-Phase Pipeline
+### Data-Injection Pipeline
 
-All API calls go through the Anthropic passthrough. No external keys required. Google, OpenAI, and all other image generation APIs are blocked by the artifact sandbox CSP and cannot be called directly.
+Claude performs all computation before rendering the artifact. No API calls from the artifact — works in Claude Code desktop, web, and all environments without any API key.
 
 ```
-User input → [1. AUDIT] → [2. SVG MOCKUP] → [3. HTML PROTOTYPE] → Results
+/interactive-design-aesthetics [target]
+  → [1. AUDIT (Claude)]
+  → [2. SVG MOCKUP (Claude)]
+  → [3. HTML PROTOTYPE (Claude)]
+  → [4. Artifact rendered with data injected as constants]
 ```
 
 **Phase 1: Audit**
-- Endpoint: `api.anthropic.com/v1/messages`
-- Model: `claude-sonnet-4-20250514`
-- Max tokens: 1000
-- Output: compact JSON (domain scores, violations, strengths, validation question)
-- Approx output size: 400-600 tokens
+- Claude evaluates all 15 principles using the framework
+- Output: compact JSON per schema
+- Constraints: verdicts 6 words max, findings/fixes 12 words max, max 3 violations, max 4 strengths
 
 **Phase 2: SVG Mockup**
-- Same endpoint and model
-- Input: audit summary (target + violation fixes)
-- Output: raw SVG element, rect/text/line/circle only, max 48 elements
-- Renders inline via `dangerouslySetInnerHTML`
+- Claude generates raw SVG applying violation fixes
+- Constraints: `rect`, `text`, `line`, `circle` only — no `path`, `gradient`, `clipPath`, `defs`
+- Max 48 elements. Renders inline via `dangerouslySetInnerHTML`
 
 **Phase 3: HTML Prototype**
-- Same endpoint and model
-- Input: target name + top violation fix + color brief
-- Output: raw HTML, inline CSS only, no JS, 60-line hard limit
+- Claude generates minimal self-contained HTML for top fix
+- Constraints: inline CSS only, no `<script>` tags, hard 60-line limit
 - Renders in sandboxed `<iframe srcDoc>`
 
-### Token Constraint
-
-The artifact sandbox enforces a hard 1000-token cap per API response. All prompts are engineered to produce outputs within this ceiling. Exceeding it causes JSON truncation and parse failure.
-
-Audit JSON schema is strictly constrained:
-- `verdict` strings: 6 words max
-- `finding` strings: 12 words max
-- `fix` strings: 12 words max
-- Max 3 violations
-- Max 4 strengths
-
-SVG generation:
-- Max 48 elements
-- Permitted: `rect`, `text`, `line`, `circle` only
-- Forbidden: `path`, `gradient`, `clipPath`, `defs`
-
-HTML prototype:
-- Hard 60-line limit in system prompt
-- Inline CSS only, no `<script>` tags
+**Phase 4: Artifact**
+- Claude renders `design-audit.jsx` with three constants filled at the top:
+  ```javascript
+  const AUDIT_DATA = { /* audit JSON */ };
+  const SVG_MARKUP = `<svg ...>...</svg>`;
+  const PROTO_HTML = `...html...`;
+  ```
+- `useState` initializes from these constants. Artifact starts in `"done"` phase immediately.
 
 ---
 
 ## State
 
 ```javascript
-const [phase, setPhase]         // "input" | "loading" | "done"
-const [target, setTarget]       // URL or interface description
-const [step, setStep]           // 0=audit, 1=svg, 2=prototype
-const [pct, setPct]             // 0-100 progress
-const [audit, setAudit]         // parsed audit JSON
-const [svgMarkup, setSvgMarkup] // raw SVG string
-const [proto, setProto]         // raw HTML string
-const [err, setErr]             // error message string
+const [phase, setPhase]         // "empty" | "done"
+const [audit]                   // parsed audit JSON (from AUDIT_DATA constant)
+const [svgMarkup]               // raw SVG string (from SVG_MARKUP constant)
+const [proto]                   // raw HTML string (from PROTO_HTML constant)
 const [model, setModel]         // selected model ID
 const [copied, setCopied]       // prompt copy confirmation
 const [mdCopied, setMdCopied]   // markdown copy confirmation
+const [mdOverlay, setMdOverlay] // markdown report overlay visible
 ```
 
 ---
-
-## API Call Helper
-
-```javascript
-async function callClaude(messages, system) {
-  let raw = "";
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      system,
-      messages,
-    }),
-  });
-  raw = await res.text();
-  const data = JSON.parse(raw);
-  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-  if (!data.content) throw new Error("No content: " + raw.slice(0, 150));
-  return data.content.filter(b => b.type === "text").map(b => b.text).join("");
-}
-```
-
-No `anthropic-version` header. No API key header. Both are handled by the passthrough.
 
 ---
 
@@ -193,11 +154,8 @@ Report filename: `audit-[target-slug].md`
 
 ## Layout
 
-### Input Phase
-Centered single-column form. Target text input (Enter to submit). Error display. RUN AUDIT button.
-
-### Loading Phase
-Step label. Animated progress bar (red `#FF3D00` fill, tick marker). Three step indicators (AUDIT / SVG / BUILD) with color state: completed=`#00E5A0`, active=`#FF3D00`, pending=`#1A1A1A`. Percentage readout.
+### Empty Phase
+Shown when `AUDIT_DATA` is null (template state) or after "NEW AUDIT" is clicked. Centered. Displays skill invocation instruction: `/interactive-design-aesthetics [target]`. No form, no button — user runs a new audit from Claude Code.
 
 ### Done Phase — three sections top to bottom
 
@@ -229,26 +187,9 @@ Right panel — Image Output:
 
 ---
 
-## CSP Constraint Reference
+## External Image APIs
 
-Artifact sandbox `connect-src` allowlist (abbreviated):
-```
-https://api.anthropic.com      ← passthrough, works
-https://cdnjs.cloudflare.com   ← CDN libs, works
-https://cdn.jsdelivr.net       ← CDN libs, works
-https://www.claudeusercontent.com
-```
-
-Blocked (all image generation APIs):
-```
-https://generativelanguage.googleapis.com  ← Nano Banana Pro / Gemini
-https://api.openai.com                     ← GPT-4o / DALL-E
-https://api.stability.ai                   ← Stable Diffusion
-https://api.replicate.com                  ← Replicate
-https://api.ideogram.ai                    ← Ideogram
-```
-
-This is not fixable from component code. Image generation must happen externally via copied prompts.
+All third-party image generation APIs (Google, OpenAI, Stability AI, Replicate, Ideogram) cannot be called from the artifact. This is not fixable from component code. The Image Model selector generates copyable prompts for each platform — user pastes externally.
 
 ---
 

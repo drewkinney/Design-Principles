@@ -204,17 +204,21 @@ Invoking `/interactive-design-aesthetics` followed by a URL, app name, or interf
 
 ### Pipeline
 
-Three sequential Anthropic API calls (passthrough, no key required):
+Claude performs all computation. No API calls from the artifact — works in Claude Code desktop, web, and all environments without any API key.
 
-1. **Audit** — Returns compact JSON: domain scores (Visceral/Behavioral/Reflective, 1-10), up to 3 violations with severity and specific fix, up to 4 strengths, one validation question.
+When `/interactive-design-aesthetics [target]` is invoked, Claude:
 
-2. **SVG Mockup** — Claude generates a compact SVG UI mockup (800x480 viewBox, rect/text/line/circle only, max 48 elements) applying the violation fixes. Renders inline in the right panel.
+1. **Audit** — Evaluates all 15 principles using the framework. Produces compact JSON: domain scores (Visceral/Behavioral/Reflective, 1–10), up to 3 violations with severity and specific fix, up to 4 strengths, one validation question. Schema: `{"target","visceral":{"score","verdict"},"behavioral":{"score","verdict"},"reflective":{"score","verdict"},"overall","violations":[{"principle","severity","finding","fix"}],"strengths":[],"validationQuestion"}`. All strings short: verdicts 6 words max, findings/fixes 12 words max, severity `high`/`medium`/`low` only.
 
-3. **HTML Prototype** — Claude generates a minimal self-contained HTML prototype demonstrating the top fix. Renders in a sandboxed iframe below the two-panel row.
+2. **SVG Mockup** — Generates compact SVG UI mockup (viewBox `0 0 800 480`). Applies violation fixes. Constraints: `rect`, `text`, `line`, `circle` only — no `path`, `gradient`, `clipPath`. Colors: bg `#0D0D0D`, surface `#161616`, border `#242424`, text `#F0EBE0`, accent `#FF3D00`, green `#00E5A0`. Max 48 elements. Realistic labels.
 
-### Constraint: Artifact Sandbox CSP
+3. **HTML Prototype** — Generates minimal self-contained HTML demonstrating the top fix. Inline CSS only, no JS. Dark theme `#0D0D0D` bg, `#FF3D00` accent. Hard 60-line limit.
 
-The artifact sandbox restricts outbound connections to `api.anthropic.com` (via passthrough) and a fixed CDN allowlist. All third-party image generation APIs — Google Generative AI, OpenAI, Stability AI, etc. — are blocked by Content Security Policy. Direct image generation inside the artifact is not possible.
+4. **Artifact** — Renders `design-audit.jsx` with `AUDIT_DATA`, `SVG_MARKUP`, and `PROTO_HTML` constants filled in at the top of the file. Artifact starts in "done" phase immediately.
+
+### Constraint: External Image APIs
+
+All third-party image generation APIs — Google Generative AI, OpenAI, Stability AI, etc. — cannot be called from the artifact sandbox. The Image Model selector generates copyable prompts for external platforms instead.
 
 ### Image Model Selector
 
@@ -259,13 +263,6 @@ The markdown report includes: domain scores table, violations with severity and 
 - **Severity**: `#FF3D00` high, `#FFD600` medium, `#00E5A0` low
 - **Accent**: `#FF3D00`
 - **Fonts**: Bebas Neue (labels/headers), DM Serif Display (display type), JetBrains Mono (data/UI)
-
-### Token Constraint
-
-The artifact sandbox caps API responses at 1000 tokens per call. All prompts enforce compact outputs:
-- Audit JSON: verdicts 6 words max, findings 12 words max, fixes 12 words max, max 3 violations
-- SVG: max 48 elements, rect/text/line/circle only, no gradients or paths
-- HTML prototype: hard 60-line limit, inline CSS only, no JS
 
 ### Source
 
